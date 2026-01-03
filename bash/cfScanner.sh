@@ -166,6 +166,7 @@ function fncShowProgress {
 # Check Subnet
 function fncCheckIPList {
   local ipList scriptDir resultFile timeoutCommand domainFronting downOK upOK localProxyPort hasPortPlaceholder scanPort
+  local skipRangeOn skipFoundLimit skipPercentLimit skipDuration totalIPs startTime scannedCount foundWorkingIPs
   ipList="${1}"
   resultFile="${3}"
   scriptDir="${4}"
@@ -180,9 +181,26 @@ function fncCheckIPList {
   quickOrNot="${13}"
   customConfigFile="${14}"
   scanPort="${15}"
+  skipRangeOn="${16}"
+  skipFoundLimit="${17}"
+  skipPercentLimit="${18}"
+  skipDuration="${19}"
   binDir="$scriptDir/../bin"
   tempConfigDir="$scriptDir/tempConfig"
   uploadFile="$tempConfigDir/upload_file"
+  if [[ "$skipRangeOn" == "YES" ]]
+  then
+    if [[ -n "$ipList" ]]
+    then
+      set -- $ipList
+      totalIPs=$#
+    else
+      totalIPs=0
+    fi
+    startTime=$(date +%s)
+    scannedCount=0
+    foundWorkingIPs=0
+  fi
   # set proper command for linux
   if command -v timeout >/dev/null 2>&1;
   then
@@ -201,6 +219,15 @@ function fncCheckIPList {
   then
     for ip in ${ipList}
       do
+        if [[ "$skipRangeOn" == "YES" && "$skipDuration" -gt 0 ]]
+        then
+          elapsed=$(( $(date +%s) - startTime ))
+          if [[ "$elapsed" -ge "$skipDuration" ]]
+          then
+            echo "Auto skipping subnet after ${skipDuration}s of scanning."
+            break
+          fi
+        fi
         if [[  "$downloadOrUpload" == "BOTH" ]]
         then
           downOK="NO"
@@ -340,6 +367,10 @@ function fncCheckIPList {
               if [[ "$downRealTime" && $downRealTime -gt 100 ]] || [[ "$upRealTime" && $upRealTime -gt 100 ]]
               then
                 echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}"
+                if [[ "$skipRangeOn" == "YES" ]]
+                then
+                  foundWorkingIPs=$(( foundWorkingIPs+1 ))
+                fi
                 if [[ "$downRealTime" && $downRealTime -gt 100 ]]
                 then
                   echo "$downRealTime, $downAvgStr DOWN FOR IP $ip" >> "$resultFile"
@@ -360,11 +391,47 @@ function fncCheckIPList {
         else
           echo -e "${RED}FAILED${NC} $ip"
         fi
+        if [[ "$skipRangeOn" == "YES" ]]
+        then
+          scannedCount=$(( scannedCount+1 ))
+          if [[ "$skipFoundLimit" -gt 0 && "$foundWorkingIPs" -ge "$skipFoundLimit" ]]
+          then
+            echo "Auto skipping subnet after finding ${skipFoundLimit} working IPs."
+            break
+          fi
+          if [[ "$totalIPs" -gt 0 && "$skipPercentLimit" -gt 0 ]]
+          then
+            percentDone=$(( scannedCount * 100 / totalIPs ))
+            if [[ "$percentDone" -ge "$skipPercentLimit" ]]
+            then
+              echo "Auto skipping subnet after ${skipPercentLimit}% of IPs scanned."
+              break
+            fi
+          fi
+          if [[ "$skipDuration" -gt 0 ]]
+          then
+            elapsed=$(( $(date +%s) - startTime ))
+            if [[ "$elapsed" -ge "$skipDuration" ]]
+            then
+              echo "Auto skipping subnet after ${skipDuration}s of scanning."
+              break
+            fi
+          fi
+        fi
     done
   elif [[ "$vpnOrNot" == "NO" ]]
   then
     for ip in ${ipList}
       do
+        if [[ "$skipRangeOn" == "YES" && "$skipDuration" -gt 0 ]]
+        then
+          elapsed=$(( $(date +%s) - startTime ))
+          if [[ "$elapsed" -ge "$skipDuration" ]]
+          then
+            echo "Auto skipping subnet after ${skipDuration}s of scanning."
+            break
+          fi
+        fi
         if [[  "$downloadOrUpload" == "BOTH" ]]
         then
           downOK="NO"
@@ -447,6 +514,10 @@ function fncCheckIPList {
               if [[ "$downRealTime" && $downRealTime -gt 100 ]] || [[ "$upRealTime" && $upRealTime -gt 100 ]]
               then
                 echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}"
+                if [[ "$skipRangeOn" == "YES" ]]
+                then
+                  foundWorkingIPs=$(( foundWorkingIPs+1 ))
+                fi
                 if [[ "$downRealTime" && $downRealTime -gt 100 ]]
                 then
                   echo "$downRealTime, $downAvgStr DOWN FOR IP $ip" >> "$resultFile"
@@ -466,6 +537,33 @@ function fncCheckIPList {
           fi
         else
           echo -e "${RED}FAILED${NC} $ip"
+        fi
+        if [[ "$skipRangeOn" == "YES" ]]
+        then
+          scannedCount=$(( scannedCount+1 ))
+          if [[ "$skipFoundLimit" -gt 0 && "$foundWorkingIPs" -ge "$skipFoundLimit" ]]
+          then
+            echo "Auto skipping subnet after finding ${skipFoundLimit} working IPs."
+            break
+          fi
+          if [[ "$totalIPs" -gt 0 && "$skipPercentLimit" -gt 0 ]]
+          then
+            percentDone=$(( scannedCount * 100 / totalIPs ))
+            if [[ "$percentDone" -ge "$skipPercentLimit" ]]
+            then
+              echo "Auto skipping subnet after ${skipPercentLimit}% of IPs scanned."
+              break
+            fi
+          fi
+          if [[ "$skipDuration" -gt 0 ]]
+          then
+            elapsed=$(( $(date +%s) - startTime ))
+            if [[ "$elapsed" -ge "$skipDuration" ]]
+            then
+              echo "Auto skipping subnet after ${skipDuration}s of scanning."
+              break
+            fi
+          fi
         fi
     done
   fi
@@ -509,6 +607,7 @@ function fncCreateDir {
 # main Function for Subnet
 function fncMainCFFindSubnet {
   local threads progressBar resultFile scriptDir fileSize osVersion parallelVersion subnetsFile breakedSubnets network netmask downloadOrUpload tryCount downThreshold upThreshold vpnOrNot quickOrNot customConfigFile scanPort
+  local cfSubnetList rawSubnetList
   threads="${1}"
   progressBar="${2}"
   resultFile="${3}"
@@ -544,18 +643,29 @@ function fncMainCFFindSubnet {
   parallelVersion=$(parallel --version | head -n1 | grep -Ewo '[0-9]{8}')
   defaultSubnetsFileUrl="https://raw.githubusercontent.com/MortezaBashsiz/CFScanner/main/config/cf.local.iplist"
 
-  if [[ "$subnetsFile" == "NULL" ]]
+  if [[ "$customSubnetList" != "NULL" ]]
   then
-    defaultSubnetsFileUrlResult=$(curl -I -L -s "$defaultSubnetsFileUrl" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
-    if [[ "$defaultSubnetsFileUrlResult" == "200" ]]
+    rawSubnetList=$(echo "$customSubnetList" | tr ',' ' ')
+    echo "Reading subnets from custom list"
+    cfSubnetList="$rawSubnetList"
+  elif [[ "$subnetsFile" == "NULL" ]]
+  then
+    if [[ "$skipRemoteSubnets" == "YES" ]]
     then
-      defaultSubnetsFile=$(curl -s "$defaultSubnetsFileUrl")
-      echo "Reading subnets from $defaultSubnetsFileUrl"
-      cfSubnetList="$defaultSubnetsFile"
-    else
-      echo "URL $defaultSubnetsFileUrl is not available. This URL contains the latest subnet file"
-      echo "Reading subnets from file $scriptDir/../config/cf.local.iplist"
+      echo "Remote subnet download disabled. Reading subnets from file $scriptDir/../config/cf.local.iplist"
       cfSubnetList=$(cat "$scriptDir/../config/cf.local.iplist")
+    else
+      defaultSubnetsFileUrlResult=$(curl -I -L -s "$defaultSubnetsFileUrl" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
+      if [[ "$defaultSubnetsFileUrlResult" == "200" ]]
+      then
+        defaultSubnetsFile=$(curl -s "$defaultSubnetsFileUrl")
+        echo "Reading subnets from $defaultSubnetsFileUrl"
+        cfSubnetList="$defaultSubnetsFile"
+      else
+        echo "URL $defaultSubnetsFileUrl is not available. This URL contains the latest subnet file"
+        echo "Reading subnets from file $scriptDir/../config/cf.local.iplist"
+        cfSubnetList=$(cat "$scriptDir/../config/cf.local.iplist")
+      fi
     fi
   else
     echo "Reading subnets from file $subnetsFile"
@@ -610,10 +720,10 @@ function fncMainCFFindSubnet {
       tput cuu1; tput ed # rewrites Parallel's bar
       if [[ $parallelVersion -gt 20220515 ]];
       then
-        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort"
+        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentLimit" ::: "$skipDuration"
       else
         echo -e "${RED}$progressBar${NC}"
-        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort"
+        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentLimit" ::: "$skipDuration"
       fi
       killall v2ray > /dev/null 2>&1
       passedIpsCount=$(( passedIpsCount+1 ))
@@ -666,10 +776,10 @@ function fncMainCFFindIP {
   tput cuu1; tput ed # rewrites Parallel's bar
   if [[ $parallelVersion -gt 20220515 ]];
   then
-    parallel --ll --bar -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort"
+    parallel --ll --bar -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "NO" ::: "0" ::: "0" ::: "0"
   else
     echo -e "${RED}$progressBar${NC}"
-    parallel -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort"
+    parallel -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "NO" ::: "0" ::: "0" ::: "0"
   fi
   killall v2ray > /dev/null 2>&1
   sort -n -k1 -t, "$resultFile" -o "$resultFile"
@@ -695,6 +805,9 @@ function fncUsage {
       [ -d <int> ] download threshold
       [ -u <int> ] upload threshold
       [ -f <custome-ip-file> (if you chose IP mode)]
+      [ -L <subnet-list> (comma-separated list for SUBNET mode)]
+      [ -R YES/NO (disable remote subnet download)]
+      [ -S YES/NO (auto skip subnet ranges)]
       [ -q YES/NO]
       [ -h ] help\n"
     exit 2
@@ -713,6 +826,9 @@ function fncUsage {
       [ -u|--up-threshold <int> ]
       [ -o|--port <int> ] (VPN mode NO only)
       [ -f|--file <custome-ip-file> (if you chose IP mode)]
+      [ -L|--subnet-list <comma-separated subnet list> ]
+      [ -R|--no-remote-subnets YES/NO ]
+      [ -S|--skip-range YES/NO ]
       [ -q|--quick YES/NO]
       [ -h|--help ]\n"
      exit 2
@@ -735,13 +851,19 @@ speed="100"
 quickOrNot="NO"
 scanPort="443"
 scanPortProvided="NO"
+customSubnetList="NULL"
+skipRemoteSubnets="NO"
+skipRangeOn="NO"
+skipFoundLimit="5"
+skipPercentLimit="10"
+skipDuration="180"
 
 if [[ "$osVersion" == "Mac" ]]
 then
-  parsedArguments=$(getopt v:m:t:p:n:x:o:s:r:d:u:f:q:h "$@")
+  parsedArguments=$(getopt v:m:t:p:n:x:o:s:r:d:u:f:q:L:R:S:h "$@")
 elif [[ "$osVersion" == "Linux" ]]
 then
-  parsedArguments=$(getopt -a -n cfScanner -o k:x:v:m:t:p:n:o:s:r:d:u:f:q:h --long core:,custom-config:,vpn-mode:,mode:,test-type:,thread:,tryCount:,port:,speed:,random:,down-threshold:,up-threshold:,file:,quick:,help -- "$@")
+  parsedArguments=$(getopt -a -n cfScanner -o k:x:v:m:t:p:n:o:s:r:d:u:f:q:L:R:S:h --long core:,custom-config:,vpn-mode:,mode:,test-type:,thread:,tryCount:,port:,speed:,random:,down-threshold:,up-threshold:,file:,subnet-list:,no-remote-subnets:,skip-range:,quick:,help -- "$@")
 fi
 
 eval set -- "$parsedArguments"
@@ -762,6 +884,9 @@ then
       -d) downThreshold="$2" ; shift 2 ;;
       -u) upThreshold="$2" ; shift 2 ;;
       -f) subnetIPFile="$2" ; shift 2 ;;
+      -L) customSubnetList="$2" ; shift 2 ;;
+      -R) skipRemoteSubnets="$2" ; shift 2 ;;
+      -S) skipRangeOn="$2" ; shift 2 ;;
       -q) quickOrNot="$2" ; shift 2 ;;
       -h) fncUsage ;;
       --) shift; break ;;
@@ -787,6 +912,9 @@ then
       -d|--down-threshold) downThreshold="$2" ; shift 2 ;;
       -u|--up-threshold) upThreshold="$2" ; shift 2 ;;
       -f|--file) subnetIPFile="$2" ; shift 2 ;;
+      -L|--subnet-list) customSubnetList="$2" ; shift 2 ;;
+      -R|--no-remote-subnets) skipRemoteSubnets="$2" ; shift 2 ;;
+      -S|--skip-range) skipRangeOn="$2" ; shift 2 ;;
       -q|--quick) quickOrNot="$2" ; shift 2 ;;
       -h|--help) fncUsage ;;
       --) shift; break ;;
@@ -822,6 +950,16 @@ then
   echo "Wrong value: $downloadOrUpload Must be DOWN or UP or BOTH"
   exit 2
 fi
+if [[ "$skipRemoteSubnets" != "YES" && "$skipRemoteSubnets" != "NO" ]]
+then
+  echo "Wrong value: $skipRemoteSubnets Must be YES or NO"
+  exit 2
+fi
+if [[ "$skipRangeOn" != "YES" && "$skipRangeOn" != "NO" ]]
+then
+  echo "Wrong value: $skipRangeOn Must be YES or NO"
+  exit 2
+fi
 if ! [[ "$scanPort" =~ ^[0-9]+$ ]] || [[ "$scanPort" -lt 1 || "$scanPort" -gt 65535 ]]
 then
   echo "Wrong value: $scanPort Must be a port number between 1 and 65535"
@@ -840,6 +978,16 @@ then
     echo "file does not exists: $subnetIPFile"
     exit 1
   fi
+fi
+if [[ "$customSubnetList" != "NULL" && "$subnetIPFile" != "NULL" ]]
+then
+  echo "Use either --subnet-list or --file, not both."
+  exit 1
+fi
+if [[ "$customSubnetList" != "NULL" && "$subnetOrIP" != "SUBNET" ]]
+then
+  echo "--subnet-list is only supported in SUBNET mode."
+  exit 1
 fi
 
 if [[ "$customConfig" != "NULL" ]]
