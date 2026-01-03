@@ -49,6 +49,8 @@ You have following switches to define the arguments
 
 -t: DOWN or UP or BOTH, Choos one of them for download and upload test
 
+-o: Port to scan when VPN mode is NO (default 443)
+
 -p: This is an integer number that defines the parallel threads count
 
 -n: This is an integer to define how many times you like to check an IP
@@ -64,12 +66,14 @@ You have following switches to define the arguments
 -u: This is the threshold to upload succeed count. With this option you can filter to show you only the IPs which have successfully upload count more than or equal the amount you specified. This will be AND with -d
 
 ```shell
-[~/CFScanner/bash]>$ bash cfScanner.sh -k <XRAY/V2RAY> -x <custom-config-file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
+[~/CFScanner/bash]>$ bash cfScanner.sh -k <XRAY/V2RAY> -x <custom-config-file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -o <port> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
 ```
 
 Notes for using `-x`:
 - `-x` only affects VPN mode. Use it with `-v YES` (with `-v NO` the custom config is ignored).
 - `-x` is required when you run with `-v YES`.
+Notes for using `-o`:
+- `-o` is only available with `-v NO`.
 
 ### Custom config template (-x)
 
