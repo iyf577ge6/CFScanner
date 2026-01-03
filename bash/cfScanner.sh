@@ -169,24 +169,19 @@ function fncCheckIPList {
   ipList="${1}"
   resultFile="${3}"
   scriptDir="${4}"
-  configId="${5}"
-  configHost="${6}"
-  configPort="${7}"
-  configPath="${8}"
-  fileSize="${9}"
-  osVersion="${10}"
-  clientCommand="${11}"
-  tryCount="${12}"
-  downThreshold="${13}"
-  upThreshold="${14}"
-  downloadOrUpload="${15}"
-  vpnOrNot="${16}"
-  quickOrNot="${17}"
-  customConfigFile="${18}"
+  fileSize="${5}"
+  osVersion="${6}"
+  clientCommand="${7}"
+  tryCount="${8}"
+  downThreshold="${9}"
+  upThreshold="${10}"
+  downloadOrUpload="${11}"
+  vpnOrNot="${12}"
+  quickOrNot="${13}"
+  customConfigFile="${14}"
   binDir="$scriptDir/../bin"
   tempConfigDir="$scriptDir/tempConfig"
   uploadFile="$tempConfigDir/upload_file"
-  configPath=$(echo "$configPath" | sed 's/\//\\\//g')
   # set proper command for linux
   if command -v timeout >/dev/null 2>&1;
   then
@@ -234,7 +229,8 @@ function fncCheckIPList {
             then
               cp "$customConfigFile" "$ipConfigFile"
             else
-              cp "$scriptDir"/config.json.temp "$ipConfigFile"
+              echo "custom config is required when VPN mode is enabled. Use -x to provide one."
+              exit 1
             fi
 
             if grep -q "PORTPORT" "$ipConfigFile"
@@ -253,60 +249,10 @@ function fncCheckIPList {
             then
               sed -i "" "s/IP.IP.IP.IP/$ip/g" "$ipConfigFile"
               sed -i "" "s/PORTPORT/3$port/g" "$ipConfigFile"
-              if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$ipConfigFile"
-              then
-                if [[ "$configId" == "NULL" || "$configHost" == "NULL" || "$configPort" == "NULL" || "$configPath" == "NULL" ]]
-                then
-                  echo "custom config placeholders require a valid -c config file or default config"
-                  exit 1
-                fi
-                mainDomain=$(echo "$configHost" | awk -F '.' '{ print $2"."$3}')
-                if [[ "$osVersion" == "Linux" ]]
-                    then
-                      randomUUID=$(cat /proc/sys/kernel/random/uuid)
-                  elif [[ "$osVersion" == "Mac"  ]]
-                    then
-                      randomUUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-                  else
-                      echo "OS not supported only Linux or Mac"
-                      exit 1
-                fi
-                configServerName="$randomUUID.$mainDomain"
-                sed -i "" "s/IDID/$configId/g" "$ipConfigFile"
-                sed -i "" "s/HOSTHOST/$configHost/g" "$ipConfigFile"
-                sed -i "" "s/CFPORTCFPORT/$configPort/g" "$ipConfigFile"
-                sed -i "" "s/ENDPOINTENDPOINT/$configPath/g" "$ipConfigFile"
-                sed -i "" "s/RANDOMHOST/$configServerName/g" "$ipConfigFile"
-              fi
             elif [[ "$osVersion" == "Linux" ]]
             then
               sed -i "s/IP.IP.IP.IP/$ip/g" "$ipConfigFile"
               sed -i "s/PORTPORT/3$port/g" "$ipConfigFile"
-              if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$ipConfigFile"
-              then
-                if [[ "$configId" == "NULL" || "$configHost" == "NULL" || "$configPort" == "NULL" || "$configPath" == "NULL" ]]
-                then
-                  echo "custom config placeholders require a valid -c config file or default config"
-                  exit 1
-                fi
-                mainDomain=$(echo "$configHost" | awk -F '.' '{ print $2"."$3}')
-                if [[ "$osVersion" == "Linux" ]]
-                    then
-                      randomUUID=$(cat /proc/sys/kernel/random/uuid)
-                  elif [[ "$osVersion" == "Mac"  ]]
-                    then
-                      randomUUID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-                  else
-                      echo "OS not supported only Linux or Mac"
-                      exit 1
-                fi
-                configServerName="$randomUUID.$mainDomain"
-                sed -i "s/IDID/$configId/g" "$ipConfigFile"
-                sed -i "s/HOSTHOST/$configHost/g" "$ipConfigFile"
-                sed -i "s/CFPORTCFPORT/$configPort/g" "$ipConfigFile"
-                sed -i "s/ENDPOINTENDPOINT/$configPath/g" "$ipConfigFile"
-                sed -i "s/RANDOMHOST/$configServerName/g" "$ipConfigFile"
-              fi
             fi
 
             if [[ "$customConfigFile" != "NULL" && "$hasPortPlaceholder" == "NO" ]]
@@ -547,30 +493,6 @@ function fncCheckDpnd {
 }
 # End of Function fncCheckDpnd
 
-# Function fncValidateConfig
-# Install packages on destination host
-function fncValidateConfig {
-  local config
-  config="$1"
-  if [[ -f "$config" ]]
-  then
-    echo "reading config ..."
-    configId=$(jq --raw-output .id "$config")
-    configHost=$(jq --raw-output .host "$config")
-    configPort=$(jq --raw-output .port "$config")
-    configPath=$(jq --raw-output .path "$config")
-    if ! [[ "$configId" ]] || ! [[ $configHost ]] || ! [[ $configPort ]] || ! [[ $configPath ]]
-    then
-      echo "config is not correct"
-      exit 1
-    fi
-  else
-    echo "config file does not exist $config"
-    exit 1
-  fi
-}
-# End of Function fncValidateConfig
-
 # Function fncCreateDir
 # creates needed directory
 function fncCreateDir {
@@ -585,25 +507,21 @@ function fncCreateDir {
 # Function fncMainCFFindSubnet
 # main Function for Subnet
 function fncMainCFFindSubnet {
-  local threads progressBar resultFile scriptDir configId configHost configPort configPath fileSize osVersion parallelVersion subnetsFile breakedSubnets network netmask downloadOrUpload tryCount downThreshold upThreshold vpnOrNot quickOrNot customConfigFile
+  local threads progressBar resultFile scriptDir fileSize osVersion parallelVersion subnetsFile breakedSubnets network netmask downloadOrUpload tryCount downThreshold upThreshold vpnOrNot quickOrNot customConfigFile
   threads="${1}"
   progressBar="${2}"
   resultFile="${3}"
   scriptDir="${4}"
-  configId="${5}"
-  configHost="${6}"
-  configPort="${7}"
-  configPath="${8}"
-  fileSize="${9}"
-  osVersion="${10}"
-  subnetsFile="${11}"
-  tryCount="${12}"
-  downThreshold="${13}"
-  upThreshold="${14}"
-  downloadOrUpload="${15}"
-  vpnOrNot="${16}"
-  quickOrNot="${17}"
-  customConfigFile="${18}"
+  fileSize="${5}"
+  osVersion="${6}"
+  subnetsFile="${7}"
+  tryCount="${8}"
+  downThreshold="${9}"
+  upThreshold="${10}"
+  downloadOrUpload="${11}"
+  vpnOrNot="${12}"
+  quickOrNot="${13}"
+  customConfigFile="${14}"
 
   if [[ "$osVersion" == "Linux" ]]
   then
@@ -690,10 +608,10 @@ function fncMainCFFindSubnet {
       tput cuu1; tput ed # rewrites Parallel's bar
       if [[ $parallelVersion -gt 20220515 ]];
       then
-        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$configId" ::: "$configHost" ::: "$configPort" ::: "$configPath" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
+        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
       else
         echo -e "${RED}$progressBar${NC}"
-        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$configId" ::: "$configHost" ::: "$configPort" ::: "$configPath" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
+        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
       fi
       killall v2ray > /dev/null 2>&1
       passedIpsCount=$(( passedIpsCount+1 ))
@@ -706,25 +624,21 @@ function fncMainCFFindSubnet {
 # Function fncMainCFFindIP
 # main Function for IP
 function fncMainCFFindIP {
-  local threads progressBar resultFile scriptDir configId configHost configPort configPath fileSize osVersion parallelVersion IPFile downloadOrUpload downThreshold upThreshold vpnOrNot quickOrNot customConfigFile
+  local threads progressBar resultFile scriptDir fileSize osVersion parallelVersion IPFile downloadOrUpload downThreshold upThreshold vpnOrNot quickOrNot customConfigFile
   threads="${1}"
   progressBar="${2}"
   resultFile="${3}"
   scriptDir="${4}"
-  configId="${5}"
-  configHost="${6}"
-  configPort="${7}"
-  configPath="${8}"
-  fileSize="${9}"
-  osVersion="${10}"
-  IPFile="${11}"
-  tryCount="${12}"
-  downThreshold="${13}"
-  upThreshold="${14}"
-  downloadOrUpload="${15}"
-  vpnOrNot="${16}"
-  quickOrNot="${17}"
-  customConfigFile="${18}"
+  fileSize="${5}"
+  osVersion="${6}"
+  IPFile="${7}"
+  tryCount="${8}"
+  downThreshold="${9}"
+  upThreshold="${10}"
+  downloadOrUpload="${11}"
+  vpnOrNot="${12}"
+  quickOrNot="${13}"
+  customConfigFile="${14}"
 
   if [[ "$osVersion" == "Linux" ]]
   then
@@ -749,17 +663,16 @@ function fncMainCFFindIP {
   tput cuu1; tput ed # rewrites Parallel's bar
   if [[ $parallelVersion -gt 20220515 ]];
   then
-    parallel --ll --bar -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$configId" ::: "$configHost" ::: "$configPort" ::: "$configPath" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
+    parallel --ll --bar -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
   else
     echo -e "${RED}$progressBar${NC}"
-    parallel -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$configId" ::: "$configHost" ::: "$configPort" ::: "$configPath" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
+    parallel -j "$threads" fncCheckIPList ::: "$cfIPList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile"
   fi
   killall v2ray > /dev/null 2>&1
   sort -n -k1 -t, "$resultFile" -o "$resultFile"
 }
 # End of Function fncMainCFFindIP
 
-clientConfigFile="https://raw.githubusercontent.com/MortezaBashsiz/CFScanner/main/config/ClientConfig.json"
 subnetIPFile="NULL"
 
 # Function fncUsage
@@ -772,7 +685,6 @@ function fncUsage {
       [ -t DOWN/UP/BOTH ]
       [ -p <int> ] threads
       [ -n <int> ] trycount
-      [ -c <configfile> ]
       [ -x <custom-config-file> ]
       [ -s <int> ] speed
       [ -r <int> ] randomness
@@ -791,7 +703,6 @@ function fncUsage {
       [ -t|--test-type  DOWN/UP/BOTH ]
       [ -p|--thread <int> ]
       [ -n|--tryCount <int> ]
-      [ -c|--config <configfile> ]
       [ -s|--speed <int> ]
       [ -r|--random <int> ]
       [ -d|--down-threshold <int> ]
@@ -814,17 +725,16 @@ subnetOrIP="SUBNET"
 downloadOrUpload="BOTH"
 threads="4"
 tryCount="1"
-config="NULL"
 customConfig="NULL"
 speed="100"
 quickOrNot="NO"
 
 if [[ "$osVersion" == "Mac" ]]
 then
-  parsedArguments=$(getopt v:m:t:p:n:c:x:s:r:d:u:f:q:h "$@")
+  parsedArguments=$(getopt v:m:t:p:n:x:s:r:d:u:f:q:h "$@")
 elif [[ "$osVersion" == "Linux" ]]
 then
-  parsedArguments=$(getopt -a -n cfScanner -o k:x:v:m:t:p:n:c:s:r:d:u:f:q:h --long core:,custom-config:,vpn-mode:,mode:,test-type:,thread:,tryCount:,config:,speed:,random:,down-threshold:,up-threshold:,file:,quick:,help -- "$@")
+  parsedArguments=$(getopt -a -n cfScanner -o k:x:v:m:t:p:n:s:r:d:u:f:q:h --long core:,custom-config:,vpn-mode:,mode:,test-type:,thread:,tryCount:,speed:,random:,down-threshold:,up-threshold:,file:,quick:,help -- "$@")
 fi
 
 eval set -- "$parsedArguments"
@@ -838,7 +748,6 @@ then
       -t) downloadOrUpload="$2" ; shift 2 ;;
       -p) threads="$2" ; shift 2 ;;
       -n) tryCount="$2" ; shift 2 ;;
-      -c) config="$2" ; shift 2 ;;
       -x) customConfig="$2" ; shift 2 ;;
       -s) speed="$2" ; shift 2 ;;
       -r) randomNumber="$2" ; shift 2 ;;
@@ -864,7 +773,6 @@ then
       -t|--test-type) downloadOrUpload="$2" ; shift 2 ;;
       -p|--thread) threads="$2" ; shift 2 ;;
       -n|--tryCount) tryCount="$2" ; shift 2 ;;
-      -c|--config) config="$2" ; shift 2 ;;
       -s|--speed) speed="$2" ; shift 2 ;;
       -r|--random) randomNumber="$2" ; shift 2 ;;
       -d|--down-threshold) downThreshold="$2" ; shift 2 ;;
@@ -924,13 +832,10 @@ then
   fi
 fi
 
-needsConfigValues="NO"
-if [[ "$customConfig" != "NULL" ]]
+if [[ "$vpnOrNot" == "YES" && "$customConfig" == "NULL" ]]
 then
-  if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$customConfig"
-  then
-    needsConfigValues="YES"
-  fi
+  echo "custom config is required when VPN mode is enabled. Use -x to provide one."
+  exit 1
 fi
 
 now=$(date +"%Y%m%d-%H%M%S")
@@ -941,11 +846,6 @@ tempConfigDir="$scriptDir/tempConfig"
 filesDir="$tempConfigDir"
 
 uploadFile="$filesDir/upload_file"
-
-configId="NULL"
-configHost="NULL"
-configPort="NULL"
-configPath="NULL"
 
 progressBar=""
 
@@ -966,54 +866,6 @@ then
   echo "using custom config $customConfig"
   cat "$customConfig"
   echo ""
-  if [[ "$needsConfigValues" == "YES" && "$config" == "NULL"  ]]
-  then
-    echo "updating config"
-    configRealUrlResult=$(curl -I -L -s "$clientConfigFile" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
-    if [[ "$configRealUrlResult" == "200" ]]
-    then
-      curl -s "$clientConfigFile" -o "$scriptDir"/config.default
-      echo "config.default updated with $clientConfigFile"
-      echo ""
-      config="$scriptDir/config.default"
-      cat "$config"
-    else
-      echo ""
-      echo "config file is not available $clientConfigFile"
-      echo "use your own"
-      echo ""
-      exit 1
-    fi
-  elif [[ "$config" != "NULL"  ]]
-  then
-    echo ""
-    echo "using your own config $config"
-    cat "$config"
-    echo ""
-  fi
-elif [[ "$config" == "NULL"  ]]
-then
-  echo "updating config"
-  configRealUrlResult=$(curl -I -L -s "$clientConfigFile" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
-  if [[ "$configRealUrlResult" == "200" ]]
-  then
-    curl -s "$clientConfigFile" -o "$scriptDir"/config.default
-    echo "config.default updated with $clientConfigFile"
-    echo ""
-    config="$scriptDir/config.default"
-    cat "$config"
-  else
-    echo ""
-    echo "config file is not available $clientConfigFile"
-    echo "use your own"
-    echo ""
-    exit 1
-  fi
-else
-  echo ""
-  echo "using your own config $config"
-  cat "$config"
-  echo ""
 fi
 
 fileSize="$(( 2*speed*1024 ))"
@@ -1029,17 +881,12 @@ then
   dd if=/dev/random of="$uploadFile" bs=1024 count="$ddSize" > /dev/null 2>&1
 fi
 
-if [[ "$customConfig" == "NULL" || "$needsConfigValues" == "YES" ]]
-then
-  fncValidateConfig "$config"
-fi
-
 if [[ "$subnetOrIP" == "SUBNET" ]]
 then
-  fncMainCFFindSubnet "$threads" "$progressBar" "$resultFile" "$scriptDir" "$configId" "$configHost" "$configPort" "$configPath" "$fileSize" "$osVersion" "$subnetIPFile" "$tryCount" "$downThreshold" "$upThreshold" "$downloadOrUpload" "$vpnOrNot" "$quickOrNot" "$customConfig"
+  fncMainCFFindSubnet "$threads" "$progressBar" "$resultFile" "$scriptDir" "$fileSize" "$osVersion" "$subnetIPFile" "$tryCount" "$downThreshold" "$upThreshold" "$downloadOrUpload" "$vpnOrNot" "$quickOrNot" "$customConfig"
 elif [[ "$subnetOrIP" == "IP" ]]
 then
-  fncMainCFFindIP "$threads" "$progressBar" "$resultFile" "$scriptDir" "$configId" "$configHost" "$configPort" "$configPath" "$fileSize" "$osVersion" "$subnetIPFile" "$tryCount" "$downThreshold" "$upThreshold" "$downloadOrUpload" "$vpnOrNot" "$quickOrNot" "$customConfig"
+  fncMainCFFindIP "$threads" "$progressBar" "$resultFile" "$scriptDir" "$fileSize" "$osVersion" "$subnetIPFile" "$tryCount" "$downThreshold" "$upThreshold" "$downloadOrUpload" "$vpnOrNot" "$quickOrNot" "$customConfig"
 else
   echo "$subnetOrIP is not correct choose one SUBNET or IP"
   exit 1

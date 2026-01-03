@@ -43,8 +43,6 @@ You have following switches to define the arguments
 
 -x: Custom xray/v2ray client config template (see "Custom config template (-x)" below)
 
--c: Path to the JSON config with id/host/port/path used for placeholder replacement
-
 -v: YES or NO, you are able to define for script to test with your vmess or not
 
 -m: SUBNET or IP, Choose one of them for scanning subnets or single IPs
@@ -66,21 +64,19 @@ You have following switches to define the arguments
 -u: This is the threshold to upload succeed count. With this option you can filter to show you only the IPs which have successfully upload count more than or equal the amount you specified. This will be AND with -d
 
 ```shell
-[~/CFScanner/bash]>$ bash cfScanner.sh -k <XRAY/V2RAY> -c <config file> -x <custom-config-file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
+[~/CFScanner/bash]>$ bash cfScanner.sh -k <XRAY/V2RAY> -x <custom-config-file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
 ```
 
 Notes for using `-x`:
 - `-x` only affects VPN mode. Use it with `-v YES` (with `-v NO` the custom config is ignored).
-- If your custom config already contains real values (no placeholders), do not pass `-c`.
-- If your custom config still contains `IDID`, `HOSTHOST`, `CFPORTCFPORT`, `ENDPOINTENDPOINT`, or `RANDOMHOST`, you must also pass `-c` (or let the script download the default config) so those placeholders can be replaced.
+- `-x` is required when you run with `-v YES`.
 
 ### Custom config template (-x)
 
 The custom config file is a full xray/v2ray client config. The script replaces these placeholders:
 
-- `IP.IP.IP.IP` → each candidate Cloudflare IP
-- `PORTPORT` → local SOCKS inbound port
-- `IDID`, `HOSTHOST`, `CFPORTCFPORT`, `ENDPOINTENDPOINT`, `RANDOMHOST` → values loaded from `-c` (or default config)
+- `IP.IP.IP.IP` → each candidate Cloudflare IP (outbound)
+- `PORTPORT` → local SOCKS inbound port (inbound)
 
 Because of these placeholders, the template is not valid JSON until the script replaces them.
 
@@ -89,7 +85,7 @@ Sample template: [`bash/custom-config.sample.json`](custom-config.sample.json)
 #### EXAMPLE: Use a custom config template
 
 ```shell
-[~/CFScanner/bash]>$ bash cfScanner.sh -v YES -k XRAY -x custom-config.sample.json -c ClientConfig.json -m SUBNET -t DOWN -p 8 -n 1 -s 100
+[~/CFScanner/bash]>$ bash cfScanner.sh -v YES -k XRAY -x custom-config.sample.json -m SUBNET -t DOWN -p 8 -n 1 -s 100
 ```
 #### EXAMPLE: Download test without custom subnet
 
