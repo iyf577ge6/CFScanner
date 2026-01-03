@@ -645,7 +645,7 @@ function fncMainCFFindSubnet {
 
   if [[ "$customSubnetList" != "NULL" ]]
   then
-    rawSubnetList=$(echo "$customSubnetList" | tr ',' ' ')
+    rawSubnetList=$(printf '%s' "$customSubnetList" | tr ',\n' ' ')
     echo "Reading subnets from custom list"
     cfSubnetList="$rawSubnetList"
   elif [[ "$subnetsFile" == "NULL" ]]
@@ -805,7 +805,7 @@ function fncUsage {
       [ -d <int> ] download threshold
       [ -u <int> ] upload threshold
       [ -f <custome-ip-file> (if you chose IP mode)]
-      [ -L <subnet-list> (comma-separated list for SUBNET mode)]
+      [ -L <subnet-list> (newline-separated list for SUBNET mode)]
       [ -R YES/NO (disable remote subnet download)]
       [ -S YES/NO (auto skip subnet ranges)]
       [ -q YES/NO]
@@ -826,7 +826,7 @@ function fncUsage {
       [ -u|--up-threshold <int> ]
       [ -o|--port <int> ] (VPN mode NO only)
       [ -f|--file <custome-ip-file> (if you chose IP mode)]
-      [ -L|--subnet-list <comma-separated subnet list> ]
+      [ -L|--subnet-list <newline-separated subnet list> ]
       [ -R|--no-remote-subnets YES/NO ]
       [ -S|--skip-range YES/NO ]
       [ -q|--quick YES/NO]

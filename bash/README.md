@@ -59,7 +59,7 @@ You have following switches to define the arguments
 
 -f: This is an optional argument which is a file address if you want to execute only some specific subnets. Then put your subnets in a file and pass the file as an argument to the command.
 
--L: Comma-separated subnet list for SUBNET mode. Keeps the given order.
+-L: Newline-separated subnet list for SUBNET mode. Keeps the given order.
 
 -R: YES or NO to disable remote subnet download (use local config/cf.local.iplist instead).
 
@@ -126,7 +126,7 @@ Sample template: [`bash/custom-config.sample.json`](custom-config.sample.json)
 #### EXAMPLE: Use a custom subnet list (ordered)
 
 ```shell
-[~/CFScanner/bash]>$ bash cfScanner.sh -v YES -m SUBNET -t BOTH -p 8 -n 1 -s 100 -L "5.226.179.0/24,203.89.5.0/24"
+[~/CFScanner/bash]>$ bash cfScanner.sh -v YES -m SUBNET -t BOTH -p 8 -n 1 -s 100 -L $'5.226.179.0/24\n203.89.5.0/24'
 ```
 
 #### EXAMPLE: Disable remote subnet download and enable auto-skip
