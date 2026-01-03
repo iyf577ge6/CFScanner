@@ -253,8 +253,13 @@ function fncCheckIPList {
             then
               sed -i "" "s/IP.IP.IP.IP/$ip/g" "$ipConfigFile"
               sed -i "" "s/PORTPORT/3$port/g" "$ipConfigFile"
-              if [[ "$customConfigFile" == "NULL" ]]
+              if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$ipConfigFile"
               then
+                if [[ "$configId" == "NULL" || "$configHost" == "NULL" || "$configPort" == "NULL" || "$configPath" == "NULL" ]]
+                then
+                  echo "custom config placeholders require a valid -c config file or default config"
+                  exit 1
+                fi
                 mainDomain=$(echo "$configHost" | awk -F '.' '{ print $2"."$3}')
                 if [[ "$osVersion" == "Linux" ]]
                     then
@@ -277,8 +282,13 @@ function fncCheckIPList {
             then
               sed -i "s/IP.IP.IP.IP/$ip/g" "$ipConfigFile"
               sed -i "s/PORTPORT/3$port/g" "$ipConfigFile"
-              if [[ "$customConfigFile" == "NULL" ]]
+              if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$ipConfigFile"
               then
+                if [[ "$configId" == "NULL" || "$configHost" == "NULL" || "$configPort" == "NULL" || "$configPath" == "NULL" ]]
+                then
+                  echo "custom config placeholders require a valid -c config file or default config"
+                  exit 1
+                fi
                 mainDomain=$(echo "$configHost" | awk -F '.' '{ print $2"."$3}')
                 if [[ "$osVersion" == "Linux" ]]
                     then
@@ -914,6 +924,15 @@ then
   fi
 fi
 
+needsConfigValues="NO"
+if [[ "$customConfig" != "NULL" ]]
+then
+  if grep -q "IDID\\|HOSTHOST\\|CFPORTCFPORT\\|ENDPOINTENDPOINT\\|RANDOMHOST" "$customConfig"
+  then
+    needsConfigValues="YES"
+  fi
+fi
+
 now=$(date +"%Y%m%d-%H%M%S")
 scriptDir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 resultDir="$scriptDir/result"
@@ -947,6 +966,31 @@ then
   echo "using custom config $customConfig"
   cat "$customConfig"
   echo ""
+  if [[ "$needsConfigValues" == "YES" && "$config" == "NULL"  ]]
+  then
+    echo "updating config"
+    configRealUrlResult=$(curl -I -L -s "$clientConfigFile" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
+    if [[ "$configRealUrlResult" == "200" ]]
+    then
+      curl -s "$clientConfigFile" -o "$scriptDir"/config.default
+      echo "config.default updated with $clientConfigFile"
+      echo ""
+      config="$scriptDir/config.default"
+      cat "$config"
+    else
+      echo ""
+      echo "config file is not available $clientConfigFile"
+      echo "use your own"
+      echo ""
+      exit 1
+    fi
+  elif [[ "$config" != "NULL"  ]]
+  then
+    echo ""
+    echo "using your own config $config"
+    cat "$config"
+    echo ""
+  fi
 elif [[ "$config" == "NULL"  ]]
 then
   echo "updating config"
@@ -985,7 +1029,7 @@ then
   dd if=/dev/random of="$uploadFile" bs=1024 count="$ddSize" > /dev/null 2>&1
 fi
 
-if [[ "$customConfig" == "NULL" ]]
+if [[ "$customConfig" == "NULL" || "$needsConfigValues" == "YES" ]]
 then
   fncValidateConfig "$config"
 fi
