@@ -603,10 +603,27 @@ function fncCreateDir {
 }
 # End of Function fncCreateDir
 
+# Function fncHandleInterrupt
+# ensures results are preserved on interrupt
+function fncHandleInterrupt {
+  echo ""
+  echo "Scan interrupted. Saving scanned results..."
+  if [[ -n "${resultFile:-}" && -f "$resultFile" && -s "$resultFile" ]]
+  then
+    sort -n -k1 -t, "$resultFile" -o "$resultFile"
+    echo "Partial results saved to: $resultFile"
+  else
+    echo "No results collected yet."
+  fi
+  exit 130
+}
+# End of Function fncHandleInterrupt
+
 # Function fncMainCFFindSubnet
 # main Function for Subnet
 function fncMainCFFindSubnet {
   local threads progressBar resultFile scriptDir fileSize osVersion parallelVersion subnetsFile breakedSubnets network netmask downloadOrUpload tryCount downThreshold upThreshold vpnOrNot quickOrNot customConfigFile scanPort
+  local skipPercentForCheck totalIPs sampleCount
   local cfSubnetList rawSubnetList
   threads="${1}"
   progressBar="${2}"
@@ -717,23 +734,40 @@ function fncMainCFFindSubnet {
       fncShowProgress "$passedIpsCount" "$ipListLength"
       killall v2ray > /dev/null 2>&1
       ipList=$(fncSubnetToIP "$breakedSubnet")
+      skipPercentForCheck="$skipPercentLimit"
       if [[ "$skipRangeOn" == "YES" && "$skipPercentLimit" -gt 0 ]]
       then
-        if [[ "$osVersion" == "Linux" || "$osVersion" == "Mac" ]]
+        set -- $ipList
+        totalIPs=$#
+        if [[ "$totalIPs" -gt 0 ]]
         then
-          ipList=$(printf '%s\n' $ipList | shuf)
-        else
-          echo "OS not supported only Linux or Mac"
-          exit 1
+          sampleCount=$(( (totalIPs * skipPercentLimit + 99) / 100 ))
+          if [[ "$sampleCount" -lt 1 ]]
+          then
+            sampleCount=1
+          fi
+          if [[ "$osVersion" == "Linux" || "$osVersion" == "Mac" ]]
+          then
+            if [[ "$sampleCount" -lt "$totalIPs" ]]
+            then
+              ipList=$(printf '%s\n' $ipList | shuf -n "$sampleCount")
+              skipPercentForCheck=0
+            else
+              ipList=$(printf '%s\n' $ipList | shuf)
+            fi
+          else
+            echo "OS not supported only Linux or Mac"
+            exit 1
+          fi
         fi
       fi
       tput cuu1; tput ed # rewrites Parallel's bar
       if [[ $parallelVersion -gt 20220515 ]];
       then
-        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentLimit" ::: "$skipDuration"
+        parallel --ll --bar -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentForCheck" ::: "$skipDuration"
       else
         echo -e "${RED}$progressBar${NC}"
-        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentLimit" ::: "$skipDuration"
+        parallel -j "$threads" fncCheckIPList ::: "$ipList" ::: "$progressBar" ::: "$resultFile" ::: "$scriptDir" ::: "$fileSize" ::: "$osVersion" ::: "$clientCommand" ::: "$tryCount" ::: "$downThreshold" ::: "$upThreshold" ::: "$downloadOrUpload" ::: "$vpnOrNot" ::: "$quickOrNot" ::: "$customConfigFile" ::: "$scanPort" ::: "$skipRangeOn" ::: "$skipFoundLimit" ::: "$skipPercentForCheck" ::: "$skipDuration"
       fi
       killall v2ray > /dev/null 2>&1
       passedIpsCount=$(( passedIpsCount+1 ))
@@ -1032,6 +1066,8 @@ export RED='\033[0;31m'
 export ORANGE='\033[0;33m'
 export YELLOW='\033[1;33m'
 export NC='\033[0m'
+
+trap fncHandleInterrupt INT TERM
 
 fncCreateDir "${resultDir}"
 fncCreateDir "${tempConfigDir}"
