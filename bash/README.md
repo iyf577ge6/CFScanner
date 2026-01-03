@@ -39,7 +39,11 @@ In the config file the variables are
 
 You have following switches to define the arguments 
 
--x: XRAY or V2RAY, you can define which core you want to use
+-k: XRAY or V2RAY, you can define which core you want to use
+
+-x: Custom xray/v2ray client config template (see "Custom config template (-x)" below)
+
+-c: Path to the JSON config with id/host/port/path used for placeholder replacement
 
 -v: YES or NO, you are able to define for script to test with your vmess or not
 
@@ -62,7 +66,30 @@ You have following switches to define the arguments
 -u: This is the threshold to upload succeed count. With this option you can filter to show you only the IPs which have successfully upload count more than or equal the amount you specified. This will be AND with -d
 
 ```shell
-[~/CFScanner/bash]>$ bash cfScanner.sh -c <config file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
+[~/CFScanner/bash]>$ bash cfScanner.sh -k <XRAY/V2RAY> -c <config file> -x <custom-config-file> -v <YES/NO> -m <SUBNET/IP> -t <DOWN/UP/BOTH> -p <int> -n <int> -r <int> -s <int> -d <int> -u <int> -f <Custome Subnet File>
+```
+
+Notes for using `-x`:
+- `-x` only affects VPN mode. Use it with `-v YES` (with `-v NO` the custom config is ignored).
+- If your custom config already contains real values (no placeholders), do not pass `-c`.
+- If your custom config still contains `IDID`, `HOSTHOST`, `CFPORTCFPORT`, `ENDPOINTENDPOINT`, or `RANDOMHOST`, you must also pass `-c` (or let the script download the default config) so those placeholders can be replaced.
+
+### Custom config template (-x)
+
+The custom config file is a full xray/v2ray client config. The script replaces these placeholders:
+
+- `IP.IP.IP.IP` → each candidate Cloudflare IP
+- `PORTPORT` → local SOCKS inbound port
+- `IDID`, `HOSTHOST`, `CFPORTCFPORT`, `ENDPOINTENDPOINT`, `RANDOMHOST` → values loaded from `-c` (or default config)
+
+Because of these placeholders, the template is not valid JSON until the script replaces them.
+
+Sample template: [`bash/custom-config.sample.json`](custom-config.sample.json)
+
+#### EXAMPLE: Use a custom config template
+
+```shell
+[~/CFScanner/bash]>$ bash cfScanner.sh -v YES -k XRAY -x custom-config.sample.json -c ClientConfig.json -m SUBNET -t DOWN -p 8 -n 1 -s 100
 ```
 #### EXAMPLE: Download test without custom subnet
 
@@ -155,4 +182,3 @@ It will generate a file in datetime format in the result directory.
 ```
 ## Video Guide
 You can find a video guide for this script on [youtube](https://youtu.be/BKLRAHolhvM "youtube") and [youtube](https://youtu.be/4xJvWYdGuV8 "youtube").
-
