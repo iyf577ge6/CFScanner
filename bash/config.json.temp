@@ -20,8 +20,8 @@
     "settings": {
       "vnext": [{
         "address": "IP.IP.IP.IP", 
-        "port": CFPORTCFPORT,
-        "users": [{"id": "IDID" }]
+        "port": 443,
+        "users": [{"id": "00000000-0000-0000-0000-000000000000" }]
       }]
     },
 		"streamSettings": {
@@ -29,12 +29,12 @@
         "security": "tls",
         "wsSettings": {
             "headers": {
-                "Host": "HOSTHOST"
+                "Host": "example.com"
             },
-            "path": "ENDPOINTENDPOINT"
+            "path": "/ws"
         },
         "tlsSettings": {
-            "serverName": "RANDOMHOST",
+            "serverName": "example.com",
             "allowInsecure": false
         }
     }
