@@ -12,13 +12,13 @@
 #        AUTHOR: Morteza Bashsiz (mb), morteza.bashsiz@gmail.com
 #  ORGANIZATION: Linux
 #       CREATED: 01/24/2023 07:36:57 PM
-#      REVISION: nomadzzz, armgham, beh-rouz, amini8, mahdibahramih, armineslami, miytiy, F4RAN 
+#      REVISION: nomadzzz, armgham, beh-rouz, amini8, mahdibahramih, armineslami, miytiy, F4RAN
 #===============================================================================
 
 export TOP_PID=$$
 
 # Function fncLongIntToStr
-# converts IP in long integer format to a string 
+# converts IP in long integer format to a string
 fncLongIntToStr() {
     local IFS=. num quad ip e
     num=$1
@@ -34,7 +34,7 @@ fncLongIntToStr() {
 # End of Function fncLongIntToStr
 
 # Function fncIpToLongInt
-# converts IP to long integer 
+# converts IP to long integer
 fncIpToLongInt() {
     local IFS=. ip num e
     # shellcheck disable=SC2206
@@ -112,7 +112,7 @@ fncSubnetToIP() {
       echo "OS not supported only Linux or Mac"
       exit 1
     fi
-    for i in "${ipList[@]}"; do 
+    for i in "${ipList[@]}"; do
       echo "$i"
     done
   elif [[ "$randomNumber" == "NULL" ]]
@@ -147,7 +147,7 @@ function fncShowProgress {
 
   barSize="$(($(tput cols)-70))" # 70 cols for description characters
 
-  # calculate the progress in percentage 
+  # calculate the progress in percentage
   percent=$(bc <<< "scale=$barPercentageScale; 100 * $current / $total" )
   # The number of done and todo characters
   done=$(bc <<< "scale=0; $barSize * $percent / 100" )
@@ -188,12 +188,12 @@ function fncCheckIPList {
   uploadFile="$tempConfigDir/upload_file"
   configPath=$(echo "$configPath" | sed 's/\//\\\//g')
   # set proper command for linux
-  if command -v timeout >/dev/null 2>&1; 
+  if command -v timeout >/dev/null 2>&1;
   then
       timeoutCommand="timeout"
   else
     # set proper command for mac
-    if command -v gtimeout >/dev/null 2>&1; 
+    if command -v gtimeout >/dev/null 2>&1;
     then
         timeoutCommand="gtimeout"
     else
@@ -236,12 +236,14 @@ function fncCheckIPList {
             else
               cp "$scriptDir"/config.json.temp "$ipConfigFile"
             fi
+
             if grep -q "PORTPORT" "$ipConfigFile"
             then
               hasPortPlaceholder="YES"
             else
               hasPortPlaceholder="NO"
             fi
+
             ipO1=$(echo "$ip" | awk -F '.' '{print $1}')
             ipO2=$(echo "$ip" | awk -F '.' '{print $2}')
             ipO3=$(echo "$ip" | awk -F '.' '{print $3}')
@@ -296,6 +298,7 @@ function fncCheckIPList {
                 sed -i "s/RANDOMHOST/$configServerName/g" "$ipConfigFile"
               fi
             fi
+
             if [[ "$customConfigFile" != "NULL" && "$hasPortPlaceholder" == "NO" ]]
             then
               localProxyPort=$(jq --raw-output '.inbounds[0].port' "$ipConfigFile")
@@ -307,6 +310,7 @@ function fncCheckIPList {
             else
               localProxyPort="3$port"
             fi
+
             # shellcheck disable=SC2009
             pid=$(ps aux | grep config.json."$ip" | grep -v grep | awk '{ print $2 }')
             if [[ "$pid" ]]
@@ -378,15 +382,13 @@ function fncCheckIPList {
             then
               if [[ "$downRealTime" && $downRealTime -gt 100 ]] || [[ "$upRealTime" && $upRealTime -gt 100 ]]
               then
-                echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}" 
+                echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}"
                 if [[ "$downRealTime" && $downRealTime -gt 100 ]]
                 then
-                  #echo "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr${NC}" 
                   echo "$downRealTime, $downAvgStr DOWN FOR IP $ip" >> "$resultFile"
                 fi
                 if [[ "$upRealTime" && $upRealTime -gt 100 ]]
                 then
-                  #echo "${GREEN}OK${NC} $ip ${BLUE}UP: $upRealTime, $upAvgStr${NC}" 
                   echo "$upRealTime, $upAvgStr UP FOR IP $ip" >> "$resultFile"
                 fi
               else
@@ -487,15 +489,13 @@ function fncCheckIPList {
             then
               if [[ "$downRealTime" && $downRealTime -gt 100 ]] || [[ "$upRealTime" && $upRealTime -gt 100 ]]
               then
-                echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}" 
+                echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr ${ORANGE}UP: Avg $upRealTime, $upAvgStr${NC}"
                 if [[ "$downRealTime" && $downRealTime -gt 100 ]]
                 then
-                  #echo -e "${GREEN}OK${NC} $ip ${BLUE}DOWN: Avg $downRealTime $downAvgStr${NC}" 
                   echo "$downRealTime, $downAvgStr DOWN FOR IP $ip" >> "$resultFile"
                 fi
                 if [[ "$upRealTime" && $upRealTime -gt 100 ]]
                 then
-                  #echo -e "${GREEN}OK${NC} $ip ${BLUE}UP: $upRealTime, $upAvgStr${NC}" 
                   echo "$upRealTime, $upAvgStr UP FOR IP $ip" >> "$resultFile"
                 fi
               else
@@ -545,10 +545,10 @@ function fncValidateConfig {
   if [[ -f "$config" ]]
   then
     echo "reading config ..."
-    configId=$(jq --raw-output .id "$config") 
-    configHost=$(jq --raw-output .host "$config") 
-    configPort=$(jq --raw-output .port "$config") 
-    configPath=$(jq --raw-output .path "$config") 
+    configId=$(jq --raw-output .id "$config")
+    configHost=$(jq --raw-output .host "$config")
+    configPort=$(jq --raw-output .port "$config")
+    configPath=$(jq --raw-output .path "$config")
     if ! [[ "$configId" ]] || ! [[ $configHost ]] || ! [[ $configPort ]] || ! [[ $configPath ]]
     then
       echo "config is not correct"
@@ -610,11 +610,11 @@ function fncMainCFFindSubnet {
     echo "OS not supported only Linux or Mac"
     exit 1
   fi
-  
+
   parallelVersion=$(parallel --version | head -n1 | grep -Ewo '[0-9]{8}')
   defaultSubnetsFileUrl="https://raw.githubusercontent.com/MortezaBashsiz/CFScanner/main/config/cf.local.iplist"
 
-  if [[ "$subnetsFile" == "NULL" ]] 
+  if [[ "$subnetsFile" == "NULL" ]]
   then
     defaultSubnetsFileUrlResult=$(curl -I -L -s "$defaultSubnetsFileUrl" | grep "^HTTP" | grep 200 | awk '{ print $2 }')
     if [[ "$defaultSubnetsFileUrlResult" == "200" ]]
@@ -631,7 +631,7 @@ function fncMainCFFindSubnet {
     echo "Reading subnets from file $subnetsFile"
     cfSubnetList=$(cat "$subnetsFile")
   fi
-  
+
   ipListLength="0"
   for subNet in ${cfSubnetList}
   do
@@ -709,7 +709,7 @@ function fncMainCFFindIP {
   osVersion="${10}"
   IPFile="${11}"
   tryCount="${12}"
-  downThreshold="${13}" 
+  downThreshold="${13}"
   upThreshold="${14}"
   downloadOrUpload="${15}"
   vpnOrNot="${16}"
@@ -756,9 +756,9 @@ subnetIPFile="NULL"
 # usage function
 function fncUsage {
   if [[ "$osVersion" == "Mac" ]]
-  then 
+  then
     echo -e "Usage: cfScanner [ -v YES/NO ]
-      [ -m SUBNET/IP ] 
+      [ -m SUBNET/IP ]
       [ -t DOWN/UP/BOTH ]
       [ -p <int> ] threads
       [ -n <int> ] trycount
@@ -777,12 +777,12 @@ function fncUsage {
     echo -e "Usage: cfScanner [ -k|--core V2RAY/XRAY ]
       [ -x|--custom-config <custom-config-file> ]
       [ -v|--vpn-mode YES/NO ]
-      [ -m|--mode  SUBNET/IP ] 
+      [ -m|--mode  SUBNET/IP ]
       [ -t|--test-type  DOWN/UP/BOTH ]
       [ -p|--thread <int> ]
       [ -n|--tryCount <int> ]
       [ -c|--config <configfile> ]
-      [ -s|--speed <int> ] 
+      [ -s|--speed <int> ]
       [ -r|--random <int> ]
       [ -d|--down-threshold <int> ]
       [ -u|--up-threshold <int> ]
@@ -875,22 +875,22 @@ if [ "$validArguments" != "0" ]; then
   exit 2
 fi
 
-if [[ "$clientCore" != "XRAY" && "$clientCore" != "V2RAY" ]] 
+if [[ "$clientCore" != "XRAY" && "$clientCore" != "V2RAY" ]]
 then
   echo "Wrong value: $clientCore Must be XRAY or V2RAY"
   exit 2
 fi
-if [[ "$vpnOrNot" != "YES" && "$vpnOrNot" != "NO" ]] 
+if [[ "$vpnOrNot" != "YES" && "$vpnOrNot" != "NO" ]]
 then
   echo "Wrong value: $vpnOrNot Must be YES or NO"
   exit 2
 fi
-if [[ "$subnetOrIP" != "SUBNET" && "$subnetOrIP" != "IP" ]] 
+if [[ "$subnetOrIP" != "SUBNET" && "$subnetOrIP" != "IP" ]]
 then
   echo "Wrong value: $subnetOrIP Must be SUBNET or IP"
   exit 2
 fi
-if [[ "$downloadOrUpload" != "DOWN" && "$downloadOrUpload" != "UP" && "$downloadOrUpload" != "BOTH" ]] 
+if [[ "$downloadOrUpload" != "DOWN" && "$downloadOrUpload" != "UP" && "$downloadOrUpload" != "BOTH" ]]
 then
   echo "Wrong value: $downloadOrUpload Must be DOWN or UP or BOTH"
   exit 2
@@ -962,7 +962,7 @@ then
     echo ""
     echo "config file is not available $clientConfigFile"
     echo "use your own"
-    echo "" 
+    echo ""
     exit 1
   fi
 else
