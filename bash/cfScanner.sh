@@ -717,6 +717,16 @@ function fncMainCFFindSubnet {
       fncShowProgress "$passedIpsCount" "$ipListLength"
       killall v2ray > /dev/null 2>&1
       ipList=$(fncSubnetToIP "$breakedSubnet")
+      if [[ "$skipRangeOn" == "YES" && "$skipPercentLimit" -gt 0 ]]
+      then
+        if [[ "$osVersion" == "Linux" || "$osVersion" == "Mac" ]]
+        then
+          ipList=$(printf '%s\n' $ipList | shuf)
+        else
+          echo "OS not supported only Linux or Mac"
+          exit 1
+        fi
+      fi
       tput cuu1; tput ed # rewrites Parallel's bar
       if [[ $parallelVersion -gt 20220515 ]];
       then
